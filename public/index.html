@@ -116,6 +116,10 @@
     padding:13px 16px; font-weight:600; font-size:14px; color:var(--ink); background:#fff; transition:.18s;
   }
   .link-btn:hover{border-color:var(--clay); color:var(--clay-d)}
+  /* unavailable cards */
+  .card.unavailable{opacity:0.65}
+  .card.unavailable .media img{filter:grayscale(90%) contrast(85%)}
+  .badge.booked{background:var(--clay-d); color:#fff}
   /* result bar */
   .result{margin-top:16px}
   .bar-track{background:#e8e0cd; border-radius:100px; height:14px; overflow:hidden}
@@ -189,7 +193,7 @@ const PROPS = [
   },
   {
     id:"treetop", name:"Treetop River Cabins", img:"/img/treetop.jpg",
-    badge:"Closest Match", match:true,
+    badge:"Closest Match", match:true, unavailable:true,
     loc:"Center Point, TX · directly on the Guadalupe River",
     price:"~$1,700–2,000", priceNote:"2 cabins (sleep 12) · 2 nights",
     rows:[
@@ -217,7 +221,7 @@ const PROPS = [
   },
   {
     id:"willow", name:"Willow Point Resort", img:"/img/willow.jpg",
-    badge:"Best for Water Toys", match:false,
+    badge:"Best for Water Toys", match:false, unavailable:true,
     loc:"Buchanan Dam, TX · directly on Lake Buchanan",
     price:"~$1,100–1,500", priceNote:"2 cabins · 2 nights · peak July",
     rows:[
@@ -237,19 +241,23 @@ if(!VID){ VID = 'v_'+Math.random().toString(36).slice(2)+Date.now().toString(36)
 let myVote = localStorage.getItem('myVote') || null;
 
 function cardHTML(p){
-  return `<div class="card">
+  const isUnavailable = p.unavailable;
+  return `<div class="card ${isUnavailable?'unavailable':''}">
     <div class="media">
-      <span class="badge ${p.match?'match':''}">${p.badge}</span>
+      <span class="badge ${isUnavailable?'booked':(p.match?'match':'')}">${isUnavailable?'⚠️ Booked (Jul 3-5)':p.badge}</span>
       <img src="${p.img}" alt="${p.name}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" loading="lazy">
     </div>
     <div class="body">
-      <h2>${p.name}</h2>
+      <h2>${p.name} ${isUnavailable?'<small style="color:var(--clay);font-size:14px;font-weight:700">(Sold Out)</small>':''}</h2>
       <div class="loc">📍 ${p.loc}</div>
       <div class="price">${p.price} <small>${p.priceNote}</small></div>
       <div class="rows">${p.rows.map(r=>`<div class="r"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('')}</div>
       <div class="tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
       <div class="actions">
-        <button class="vote-btn" data-id="${p.id}">🗳️ Vote for this</button>
+        ${isUnavailable ? 
+          `<button class="vote-btn" disabled style="background:#9ea896;color:#5a6150;cursor:not-allowed;box-shadow:none;">❌ Unavailable</button>` : 
+          `<button class="vote-btn" data-id="${p.id}">🗳️ Vote for this</button>`
+        }
         <a class="link-btn" href="${p.book}" target="_blank" rel="noopener">View photos &amp; book ↗</a>
       </div>
       <div class="result">
