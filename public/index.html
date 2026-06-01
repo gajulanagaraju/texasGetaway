@@ -158,7 +158,7 @@
   <div class="wrap">
     <div class="tally">
       <h3>Live Results</h3>
-      <p>Total votes so far: <span class="total" id="totalVotes">0</span></p>
+      <p>Total votes so far: <span class="total" id="totalVotes">0</span> &nbsp;·&nbsp; Unique visitors: <span class="total" id="totalVisitors">0</span></p>
       <p id="leader" style="font-weight:600;color:var(--moss-d)"></p>
     </div>
   </div>
@@ -272,25 +272,43 @@ async function api(path, opts){
   catch(e){ return null; }
 }
 
+let visRegistered = localStorage.getItem('vis_registered');
+
 async function fbGet(){
   const counts={}; 
   await Promise.all(PROPS.map(async p=>{
     try{ const r=await fetch(`${FB_BASE}/${FB_NS}/${p.id}`); const j=await r.json(); counts[p.id]=(j&&(j.count??j.value))||0; }
     catch{ counts[p.id]=0; }
   }));
-  return counts;
+  
+  let visitors = 0;
+  try {
+    let url = `${FB_BASE}/${FB_NS}/visitors`;
+    if (!visRegistered) {
+      url = `${FB_BASE}/${FB_NS}/visitors/up`;
+      localStorage.setItem('vis_registered', '1');
+      visRegistered = '1';
+    }
+    const r = await fetch(url);
+    const j = await r.json();
+    visitors = (j && (j.count ?? j.value)) || 0;
+  } catch(e) {
+    visitors = 0;
+  }
+
+  return { counts, visitors };
 }
 async function fbVote(id){
-  // remove previous vote if changing
   const prev = localStorage.getItem('fbVoted');
   try{ if(prev && prev!==id) await fetch(`${FB_BASE}/${FB_NS}/${prev}/down`); }catch{}
   if(prev!==id){ try{ await fetch(`${FB_BASE}/${FB_NS}/${id}/up`);}catch{} localStorage.setItem('fbVoted',id);}  
   return fbGet();
 }
 
-function render(counts){
+function render(counts, visitors = 0){
   const total = Object.values(counts).reduce((a,b)=>a+b,0);
   document.getElementById('totalVotes').textContent = total;
+  document.getElementById('totalVisitors').textContent = visitors;
   let leadId=null, leadN=-1;
   PROPS.forEach(p=>{
     const n = counts[p.id]||0;
@@ -310,12 +328,24 @@ function render(counts){
 }
 
 async function refresh(){
-  if(useFallback){ render(await fbGet()); return; }
-  const d = await api('/api/votes');
+  if(useFallback){ 
+    const res = await fbGet();
+    render(res.counts, res.visitors); 
+    return; 
+  }
+  const d = await api('/api/votes?vid=' + VID);
   if(d){
-    if(d.storage==='none' || d.storage==='error'){ useFallback=true; render(await fbGet()); }
-    else render(d.counts||{});
-  } else { useFallback=true; render(await fbGet()); }
+    if(d.storage==='none' || d.storage==='error'){ 
+      useFallback=true; 
+      const res = await fbGet();
+      render(res.counts, res.visitors); 
+    }
+    else render(d.counts||{}, d.visitors||0);
+  } else { 
+    useFallback=true; 
+    const res = await fbGet();
+    render(res.counts, res.visitors); 
+  }
 }
 
 document.getElementById('cards').addEventListener('click', async e=>{
@@ -323,10 +353,18 @@ document.getElementById('cards').addEventListener('click', async e=>{
   const id = btn.dataset.id;
   myVote = id; localStorage.setItem('myVote', id);
   btn.innerHTML = '⏳ saving…';
-  if(useFallback){ render(await fbVote(id)); return; }
+  if(useFallback){ 
+    const res = await fbVote(id);
+    render(res.counts, res.visitors); 
+    return; 
+  }
   const d = await api('/api/votes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({voter:VID, choice:id})});
-  if(d && d.storage!=='none' && d.storage!=='error'){ render(d.counts||{}); }
-  else { useFallback=true; render(await fbVote(id)); }
+  if(d && d.storage!=='none' && d.storage!=='error'){ render(d.counts||{}, d.visitors||0); }
+  else { 
+    useFallback=true; 
+    const res = await fbVote(id);
+    render(res.counts, res.visitors); 
+  }
 });
 
 refresh();

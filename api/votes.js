@@ -6,6 +6,7 @@
 
 const VALID = ['sons', 'treetop', 'castell', 'willow'];
 const KEY = 'getaway:votes'; // hash of voterId -> choice
+const VISITORS_KEY = 'getaway:visitors'; // set of unique visitor IDs
 
 function tally(map) {
   const counts = { sons: 0, treetop: 0, castell: 0, willow: 0 };
@@ -13,6 +14,69 @@ function tally(map) {
     if (counts[choice] !== undefined) counts[choice]++;
   }
   return counts;
+}
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+async function sendVoteEmail(voter, choice) {
+  if (!RESEND_API_KEY) {
+    console.log(`[EMAIL SIMULATION] Vote cast by ${voter} for ${choice}`);
+    return;
+  }
+
+  const propertyNames = {
+    sons: "Son's Rio Cibolo",
+    treetop: "Treetop River Cabins",
+    castell: "Castell Cabins (El Castell)",
+    willow: "Willow Point Resort"
+  };
+  const propName = propertyNames[choice] || choice;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Getaway Poll <onboarding@resend.dev>',
+        to: 'raju1410@gmail.com',
+        subject: `🛶 New Vote Cast for ${propName}!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #d8cfb8; border-radius: 12px; background-color: #fbf8f0;">
+            <h2 style="color: #2a5232; margin-top: 0;">Texas Family Getaway Poll</h2>
+            <p>A new vote has been cast in the group getaway planning poll!</p>
+            <hr style="border: 0; border-top: 1px dashed #d8cfb8; margin: 20px 0;" />
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #3a6b43; width: 140px;">Property Choice:</td>
+                <td style="padding: 8px 0; font-size: 16px;"><strong>${propName}</strong></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #3a6b43;">Voter ID:</td>
+                <td style="padding: 8px 0; font-family: monospace; color: #c8643c;">${voter}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #3a6b43;">Time (UTC):</td>
+                <td style="padding: 8px 0; color: #5a6150;">${new Date().toUTCString()}</td>
+              </tr>
+            </table>
+            <hr style="border: 0; border-top: 1px dashed #d8cfb8; margin: 20px 0;" />
+            <p style="margin-bottom: 0;"><a href="https://texas-getaway.vercel.app" style="display: inline-block; padding: 10px 20px; background-color: #3a6b43; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">View Live Poll Results ↗</a></p>
+          </div>
+        `
+      })
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Resend API failed: ${errText}`);
+    } else {
+      console.log(`Email notification sent successfully for voter ${voter}`);
+    }
+  } catch (e) {
+    console.error(`Error sending email via Resend:`, e);
+  }
 }
 
 const kvConfigured = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
@@ -26,20 +90,27 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!kvConfigured) {
-    return res.status(200).json({ counts: tally({}), storage: 'none' });
+    return res.status(200).json({ counts: tally({}), visitors: 0, storage: 'none' });
   }
 
   let kv;
   try {
     ({ kv } = await import('@vercel/kv'));
   } catch (e) {
-    return res.status(200).json({ counts: tally({}), storage: 'none' });
+    return res.status(200).json({ counts: tally({}), visitors: 0, storage: 'none' });
   }
 
   try {
     if (req.method === 'GET') {
-      const map = (await kv.hgetall(KEY)) || {};
-      return res.status(200).json({ counts: tally(map), storage: 'kv' });
+      const vid = req.query.vid;
+      if (vid) {
+        await kv.sadd(VISITORS_KEY, vid);
+      }
+      const [map, visitorsCount] = await Promise.all([
+        kv.hgetall(KEY) || {},
+        kv.scard(VISITORS_KEY) || 0
+      ]);
+      return res.status(200).json({ counts: tally(map), visitors: visitorsCount, storage: 'kv' });
     }
 
     if (req.method === 'POST') {
@@ -49,13 +120,27 @@ export default async function handler(req, res) {
       if (!voter || !VALID.includes(choice)) {
         return res.status(400).json({ error: 'bad input' });
       }
-      await kv.hset(KEY, { [voter]: choice }); // one vote per voter; overwrites prior
-      const map = (await kv.hgetall(KEY)) || {};
-      return res.status(200).json({ counts: tally(map), storage: 'kv' });
+      
+      // Save vote and register visitor
+      await Promise.all([
+        kv.hset(KEY, { [voter]: choice }),
+        kv.sadd(VISITORS_KEY, voter)
+      ]);
+      
+      // Retrieve updated values
+      const [map, visitorsCount] = await Promise.all([
+        kv.hgetall(KEY) || {},
+        kv.scard(VISITORS_KEY) || 0
+      ]);
+
+      // Fire email notification asynchronously in the background
+      sendVoteEmail(voter, choice);
+
+      return res.status(200).json({ counts: tally(map), visitors: visitorsCount, storage: 'kv' });
     }
 
     return res.status(405).json({ error: 'method not allowed' });
   } catch (e) {
-    return res.status(200).json({ counts: tally({}), storage: 'error', detail: String(e) });
+    return res.status(200).json({ counts: tally({}), visitors: 0, storage: 'error', detail: String(e) });
   }
 }
