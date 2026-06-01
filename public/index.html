@@ -19,9 +19,13 @@
   html{scroll-behavior:smooth}
   body{
     font-family:'Archivo',sans-serif; color:var(--ink);
-    background:var(--paper);
-    background-image:radial-gradient(circle at 12% 8%, rgba(58,107,67,.07), transparent 40%),
-                     radial-gradient(circle at 88% 0%, rgba(200,100,60,.06), transparent 38%);
+    background-color:var(--paper);
+    background-image: linear-gradient(rgba(244, 239, 227, 0.88), rgba(244, 239, 227, 0.88)),
+                     url("https://photos.fife.usercontent.google.com/pw/AP1GczNZxBIIqIM8gDeZdTPnS1rJZywFmHTZgtcU6Snbxdde2e29RrY3JHFxmw=w1418-h945-s-no-gm?authuser=0");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     line-height:1.55; -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
@@ -163,14 +167,14 @@
 <footer>
   <div class="wrap">
     Built for our group trip planning · Estimated prices — confirm live rates &amp; availability with each property (July 4 weekend books up fast!).
-    <p class="note">Photos on this page are stylized illustrations. Tap “View photos &amp; book” on any property for real photos, current pricing, and reservations. Reference inspiration: Son's Rio Cibolo.</p>
+    <p class="note">Photos on this page are real photos of the properties. Tap “View photos &amp; book” on any property for current pricing, and reservations. Reference inspiration: Son's Rio Cibolo.</p>
   </div>
 </footer>
 
 <script>
 const PROPS = [
   {
-    id:"sons", name:"Son's Rio Cibolo", img:"/img/sons.svg",
+    id:"sons", name:"Son's Rio Cibolo", img:"/img/sons.webp",
     badge:"The Original", match:true,
     loc:"Marion, TX · spring-fed Cibolo Creek (20 min E of San Antonio)",
     price:"~$1,000–2,000+", priceNote:"2–3 cabins · 2 nights · weekend rates",
@@ -183,7 +187,7 @@ const PROPS = [
     book:"https://sonsriocibolo.com/book-now", phone:"877-577-7667"
   },
   {
-    id:"treetop", name:"Treetop River Cabins", img:"/img/treetop.svg",
+    id:"treetop", name:"Treetop River Cabins", img:"/img/treetop.jpg",
     badge:"Closest Match", match:true,
     loc:"Center Point, TX · directly on the Guadalupe River",
     price:"~$1,700–2,000", priceNote:"2 cabins (sleep 12) · 2 nights",
@@ -196,7 +200,7 @@ const PROPS = [
     book:"https://treetoprivercabins.com/", phone:"512-282-9232"
   },
   {
-    id:"castell", name:"Castell Cabins · El Castell", img:"/img/castell.svg",
+    id:"castell", name:"Castell Cabins · El Castell", img:"/img/castell.jpg",
     badge:"Best Value & Privacy", match:false,
     loc:"Castell, TX · spring-fed Llano River",
     price:"~$900–1,400", priceNote:"All 4 cabins · 2 nights · whole property",
@@ -209,7 +213,7 @@ const PROPS = [
     book:"https://castellcabins.com/book/", phone:"see site"
   },
   {
-    id:"willow", name:"Willow Point Resort", img:"/img/willow.svg",
+    id:"willow", name:"Willow Point Resort", img:"/img/willow.jpg",
     badge:"Best for Water Toys", match:false,
     loc:"Buchanan Dam, TX · directly on Lake Buchanan",
     price:"~$1,100–1,500", priceNote:"2 cabins · 2 nights · peak July",
