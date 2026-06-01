@@ -79,6 +79,25 @@ async function sendVoteEmail(voter, choice) {
   }
 }
 
+const FB_BASE = 'https://api.counterapi.dev/v1';
+
+// Proxy function to get counts from Counter API
+async function getCounterApiCounts(ns) {
+  const counts = { sons: 0, treetop: 0, castell: 0, willow: 0 };
+  await Promise.all(VALID.map(async id => {
+    try {
+      const r = await fetch(`${FB_BASE}/${ns}/${id}/`);
+      if (r.ok) {
+        const j = await r.json();
+        counts[id] = (j && (j.count ?? j.value)) || 0;
+      }
+    } catch(e) {
+      console.error(`Counter API fetch error for ${id}:`, e);
+    }
+  }));
+  return counts;
+}
+
 const kvConfigured = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 
 export default async function handler(req, res) {
@@ -89,10 +108,74 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const host = req.headers.host || 'poll';
+  const ns = 'tx-getaway-' + (host.split('.')[0] || 'poll');
+
   if (!kvConfigured) {
-    return res.status(200).json({ counts: tally({}), visitors: 0, storage: 'none' });
+    try {
+      if (req.method === 'GET') {
+        const newVisit = req.query.new_visit === '1';
+        let visitorsCount = 0;
+        try {
+          let url = `${FB_BASE}/${ns}/visitors/`;
+          if (newVisit) {
+            url = `${FB_BASE}/${ns}/visitors/up/`;
+          }
+          const r = await fetch(url);
+          if (r.ok) {
+            const j = await r.json();
+            visitorsCount = (j && (j.count ?? j.value)) || 0;
+          }
+        } catch (e) {}
+
+        const counts = await getCounterApiCounts(ns);
+        return res.status(200).json({ counts, visitors: visitorsCount, storage: 'counterapi' });
+      }
+
+      if (req.method === 'POST') {
+        let body = req.body;
+        if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+        const { voter, choice, prevChoice } = body || {};
+        if (!voter || !VALID.includes(choice)) {
+          return res.status(400).json({ error: 'bad input' });
+        }
+
+        // Increment the selected choice
+        try {
+          await fetch(`${FB_BASE}/${ns}/${choice}/up/`);
+        } catch (e) {}
+
+        // Decrement previous choice if changed
+        if (prevChoice && prevChoice !== choice && VALID.includes(prevChoice)) {
+          try {
+            await fetch(`${FB_BASE}/${ns}/${prevChoice}/down/`);
+          } catch (e) {}
+        }
+
+        // Get updated counts
+        const counts = await getCounterApiCounts(ns);
+
+        // Get current visitors count
+        let visitorsCount = 0;
+        try {
+          const r = await fetch(`${FB_BASE}/${ns}/visitors/`);
+          if (r.ok) {
+            const j = await r.json();
+            visitorsCount = (j && (j.count ?? j.value)) || 0;
+          }
+        } catch (e) {}
+
+        // Send email in background
+        sendVoteEmail(voter, choice);
+
+        return res.status(200).json({ counts, visitors: visitorsCount, storage: 'counterapi' });
+      }
+    } catch (e) {
+      return res.status(200).json({ counts: tally({}), visitors: 0, storage: 'error', detail: String(e) });
+    }
   }
 
+  // Vercel KV Implementation
   let kv;
   try {
     ({ kv } = await import('@vercel/kv'));
@@ -121,19 +204,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'bad input' });
       }
       
-      // Save vote and register visitor
       await Promise.all([
         kv.hset(KEY, { [voter]: choice }),
         kv.sadd(VISITORS_KEY, voter)
       ]);
       
-      // Retrieve updated values
       const [map, visitorsCount] = await Promise.all([
         kv.hgetall(KEY) || {},
         kv.scard(VISITORS_KEY) || 0
       ]);
 
-      // Fire email notification asynchronously in the background
       sendVoteEmail(voter, choice);
 
       return res.status(200).json({ counts: tally(map), visitors: visitorsCount, storage: 'kv' });

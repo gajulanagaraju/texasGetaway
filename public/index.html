@@ -239,6 +239,7 @@ const PROPS = [
 let VID = localStorage.getItem('vid');
 if(!VID){ VID = 'v_'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('vid',VID); }
 let myVote = localStorage.getItem('myVote') || null;
+let visRegistered = localStorage.getItem('vis_registered');
 
 function cardHTML(p){
   const isUnavailable = p.unavailable;
@@ -270,47 +271,9 @@ function cardHTML(p){
 
 document.getElementById('cards').innerHTML = PROPS.map(cardHTML).join('');
 
-// Shared keyless fallback (used only if the serverless Blob store isn't active)
-const FB_BASE = 'https://api.counterapi.dev/v1';
-const FB_NS = 'tx-getaway-' + (location.hostname.split('.')[0]||'poll');
-let useFallback = false;
-
 async function api(path, opts){
   try{ const r = await fetch(path, opts); if(!r.ok) throw 0; return await r.json(); }
   catch(e){ return null; }
-}
-
-let visRegistered = localStorage.getItem('vis_registered');
-
-async function fbGet(){
-  const counts={}; 
-  await Promise.all(PROPS.map(async p=>{
-    try{ const r=await fetch(`${FB_BASE}/${FB_NS}/${p.id}`); const j=await r.json(); counts[p.id]=(j&&(j.count??j.value))||0; }
-    catch{ counts[p.id]=0; }
-  }));
-  
-  let visitors = 0;
-  try {
-    let url = `${FB_BASE}/${FB_NS}/visitors`;
-    if (!visRegistered) {
-      url = `${FB_BASE}/${FB_NS}/visitors/up`;
-      localStorage.setItem('vis_registered', '1');
-      visRegistered = '1';
-    }
-    const r = await fetch(url);
-    const j = await r.json();
-    visitors = (j && (j.count ?? j.value)) || 0;
-  } catch(e) {
-    visitors = 0;
-  }
-
-  return { counts, visitors };
-}
-async function fbVote(id){
-  const prev = localStorage.getItem('fbVoted');
-  try{ if(prev && prev!==id) await fetch(`${FB_BASE}/${FB_NS}/${prev}/down`); }catch{}
-  if(prev!==id){ try{ await fetch(`${FB_BASE}/${FB_NS}/${id}/up`);}catch{} localStorage.setItem('fbVoted',id);}  
-  return fbGet();
 }
 
 function render(counts, visitors = 0){
@@ -336,42 +299,32 @@ function render(counts, visitors = 0){
 }
 
 async function refresh(){
-  if(useFallback){ 
-    const res = await fbGet();
-    render(res.counts, res.visitors); 
-    return; 
+  let url = '/api/votes?vid=' + VID;
+  if (!visRegistered) {
+    url += '&new_visit=1';
+    localStorage.setItem('vis_registered', '1');
+    visRegistered = '1';
   }
-  const d = await api('/api/votes?vid=' + VID);
-  if(d){
-    if(d.storage==='none' || d.storage==='error'){ 
-      useFallback=true; 
-      const res = await fbGet();
-      render(res.counts, res.visitors); 
-    }
-    else render(d.counts||{}, d.visitors||0);
-  } else { 
-    useFallback=true; 
-    const res = await fbGet();
-    render(res.counts, res.visitors); 
+  const d = await api(url);
+  if(d && d.storage !== 'error'){
+    render(d.counts || {}, d.visitors || 0);
   }
 }
 
 document.getElementById('cards').addEventListener('click', async e=>{
   const btn = e.target.closest('.vote-btn'); if(!btn) return;
   const id = btn.dataset.id;
+  const prevChoice = myVote;
   myVote = id; localStorage.setItem('myVote', id);
   btn.innerHTML = '⏳ saving…';
-  if(useFallback){ 
-    const res = await fbVote(id);
-    render(res.counts, res.visitors); 
-    return; 
-  }
-  const d = await api('/api/votes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({voter:VID, choice:id})});
-  if(d && d.storage!=='none' && d.storage!=='error'){ render(d.counts||{}, d.visitors||0); }
-  else { 
-    useFallback=true; 
-    const res = await fbVote(id);
-    render(res.counts, res.visitors); 
+  
+  const d = await api('/api/votes', {
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify({ voter: VID, choice: id, prevChoice })
+  });
+  if(d && d.storage !== 'error'){ 
+    render(d.counts || {}, d.visitors || 0); 
   }
 });
 
