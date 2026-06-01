@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#cfe8d6"/><stop offset="1" stop-color="#eef7f0"/>
+</linearGradient>
+<linearGradient id="wtr" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2f8fb0"/><stop offset="1" stop-color="#1d6079"/>
+</linearGradient>
+</defs>
+<rect width="800" height="480" fill="url(#sky)"/>
+<circle cx="640" cy="95" r="46" fill="#fff" opacity="0.85"/>
+
+<path d="M0 330 Q200 312 400 330 T800 330 V480 H0 Z" fill="url(#wtr)"/>
+<rect x="360" y="120" width="40" height="230" fill="#6b4a2b"/>
+<circle cx="380" cy="120" r="120" fill="#2e6b3f"/><circle cx="270" cy="160" r="80" fill="#357a48"/><circle cx="500" cy="150" r="90" fill="#2e6b3f"/>
+<g>
+<rect x="250" y="225" width="110" height="70" rx="5" fill="#c9a978"/><polygon points="242,225 305,190 368,225" fill="#5a3d22"/>
+<rect x="430" y="225" width="110" height="70" rx="5" fill="#d8bd92"/><polygon points="422,225 485,190 548,225" fill="#6b4a2b"/>
+<rect x="280" y="250" width="22" height="28" fill="#7ec8e3"/><rect x="460" y="250" width="22" height="28" fill="#7ec8e3"/>
+</g>
+<rect x="250" y="295" width="290" height="10" fill="#7a5733"/>
+<line x1="395" y1="305" x2="395" y2="330" stroke="#7a5733" stroke-width="6"/>
+<path d="M0 330 Q200 312 400 330 T800 330" fill="none" stroke="#fff" stroke-width="2" opacity="0.4"/>
+<ellipse cx="200" cy="380" rx="60" ry="14" fill="#fff" opacity="0.25"/>
+
+</svg>

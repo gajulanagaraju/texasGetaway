@@ -1,0 +1,9 @@
+{
+  "name": "texas-getaway-poll",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shareable Texas Hill Country family getaway poll for July 3-5",
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  }
+}

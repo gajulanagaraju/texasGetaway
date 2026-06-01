@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#bfe3f0"/><stop offset="1" stop-color="#e9f6fb"/>
+</linearGradient>
+<linearGradient id="wtr" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2f9fc4"/><stop offset="1" stop-color="#1c6f8c"/>
+</linearGradient>
+</defs>
+<rect width="800" height="480" fill="url(#sky)"/>
+<circle cx="640" cy="95" r="46" fill="#fff" opacity="0.85"/>
+
+<path d="M0 300 Q200 280 400 300 T800 300 V480 H0 Z" fill="url(#wtr)"/>
+<g opacity="0.9">
+<rect x="90" y="225" width="120" height="80" rx="6" fill="#e8dcc0"/><polygon points="80,225 150,185 220,225" fill="#7a5b3a"/>
+<rect x="250" y="235" width="120" height="70" rx="6" fill="#efe4cc"/><polygon points="240,235 310,198 380,235" fill="#8a6a45"/>
+<rect x="410" y="228" width="120" height="77" rx="6" fill="#e8dcc0"/><polygon points="400,228 470,188 540,228" fill="#7a5b3a"/>
+</g>
+<ellipse cx="610" cy="350" rx="120" ry="34" fill="#3aa6c9" opacity="0.65"/>
+<ellipse cx="610" cy="350" rx="80" ry="20" fill="#5cc2dd" opacity="0.7"/>
+<g stroke="#2f7d4f" stroke-width="0" fill="#2f7d4f">
+<circle cx="60" cy="200" r="40"/><circle cx="730" cy="210" r="46"/><circle cx="160" cy="170" r="30"/>
+</g>
+<rect x="55" y="200" width="10" height="40" fill="#5a3d22"/><rect x="725" y="210" width="11" height="44" fill="#5a3d22"/>
+<path d="M0 300 Q200 280 400 300 T800 300" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+
+</svg>
